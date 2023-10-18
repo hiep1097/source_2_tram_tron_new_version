@@ -22,8 +22,8 @@ public class RMCTruckSchedule {
     public String StationID_Go;     // Mã trạm trộn đi
     public String StationID_Back;   // Mã trạm trộn quay về
 
-    public int distanceGo;
-    public int distanceBack;
+//    public int distanceGo;
+//    public int distanceBack;
 
     public void calDelivery(int powerOfTruck){
         if(k < s.numOfTruck) {

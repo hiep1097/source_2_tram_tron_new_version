@@ -86,10 +86,10 @@ public class Main_DA {
         System.out.println("CWT = " + _fSimRMC_TWC.CWT + " - TWC = " + _fSimRMC_TWC.TWC);
         twc.toStringNew("Optimized value TWC = ");
 
-        f_SimRMC _fSimRMC_CWT_worst_distance = new f_SimRMC();
-        System.out.println("Total distance in the best of CWT: " + _fSimRMC_CWT.TOTAL_DISTANCE);
-        _fSimRMC_CWT_worst_distance.Execute(cwt.getWorstArray());
-        System.out.println("Total distance in the worst of CWT: " + _fSimRMC_CWT_worst_distance.TOTAL_DISTANCE);
+//        f_SimRMC _fSimRMC_CWT_worst_distance = new f_SimRMC();
+//        System.out.println("Total distance in the best of CWT: " + _fSimRMC_CWT.TOTAL_DISTANCE);
+//        _fSimRMC_CWT_worst_distance.Execute(cwt.getWorstArray());
+//        System.out.println("Total distance in the worst of CWT: " + _fSimRMC_CWT_worst_distance.TOTAL_DISTANCE);
 
         do {
             for (int i = 0; i < lstParetoData.size() - 1; i++) {
