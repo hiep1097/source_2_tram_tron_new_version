@@ -3,6 +3,7 @@ package com.dagwo.problem;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class f_SimRMC {
@@ -29,7 +30,7 @@ public class f_SimRMC {
 
     public f_SimRMC(){
         try {
-            ReadFile("Data/input_2_tram.data");
+            ReadFile("Data/input_2_tram_29062024.data");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -144,31 +145,32 @@ public class f_SimRMC {
                     data = line.split("\\:");
                     rmcStation.c = Integer.parseInt(data[1]);
 
-//                    line = readLineFromFile(scan);
-//                    data = line.split("\\:");
-//                    String arrD[] = data[1].split("\\|");
-//
-//                    for(int j = 0; j < arrD.length; j++){
-//                        rmcStation.lstD.add(Integer.parseInt(arrD[j]));
-//                    }
-
                     line = readLineFromFile(scan);
                     data = line.split("\\:");
                     String arrTDG[] = data[1].split("\\|");
                     for(int j = 0; j < arrTDG.length; j++){
-                        rmcStation.lstTDG.add(Integer.parseInt(arrTDG[j]));
+                        List<Integer> lstTDG = new ArrayList<>();
+                        for (int k = 0; k <arrTDG[j].split(",").length; k++){
+                            lstTDG.add(Integer.parseInt(arrTDG[j].split(",")[k]));
+                        }
+                        rmcStation.lstTDG.add(lstTDG);
                     }
 
                     line = readLineFromFile(scan);
                     data = line.split("\\:");
                     String arrTDB[] = data[1].split("\\|");
                     for(int j = 0; j < arrTDB.length; j++){
-                        rmcStation.lstTDB.add(Integer.parseInt(arrTDB[j]));
+                        List<Integer> lstTDB = new ArrayList<>();
+                        for (int k = 0; k <arrTDB[j].split(",").length; k++){
+                            lstTDB.add(Integer.parseInt(arrTDB[j].split(",")[k]));
+                        }
+                        rmcStation.lstTDB.add(lstTDB);
                     }
-
                     lstRMCStation.add(rmcStation);
                 }
             }
+
+
 
             for(Site s : lstSite) {
                 s.calNumOfTruck(powerOfTruck);
@@ -188,12 +190,62 @@ public class f_SimRMC {
     public void calFDT(){
         // Tính min thời gian khởi hành của các trạm trộn tới công trường
 
-        for (RMCStation rmcStation: lstRMCStation){
-            int fdt = lstSite.get(0).calTimeTruckMove(rmcStation.lstTDG.get(0));
+        /*Bài toán:
+        Đã có:
+        - Giá trị TDG nhận 1 trong 24 giá trị tương ứng 24 khoảng thời gian 1 tiếng trong ngày (0h00-0h59, 1h00-1h59,..., 23h-23h59h)
+        - Thời gian công trường bắt đầu đổ bê tông SCT (giả sử công trường A đổ lúc 8h00)
 
-            for(int i = 1; i < lstSite.size(); i++){
-                if(fdt > lstSite.get(i).calTimeTruckMove(rmcStation.lstTDG.get(i))){
-                    fdt = lstSite.get(i).calTimeTruckMove(rmcStation.lstTDG.get(i));
+        Cần tính:
+        - Thời gian lý tưởng xe bắt đầu khởi hành FDT
+
+        Cách giải:
+        - Do đã biết thời gian công trường đổ bê tông SCT, cần xem TDG lấy giá trị nào trong 24 giá trị.
+        Chẳng hạn SCT là 8h00, thì chắc chắn xe phải khởi hành trước 8h00.
+        Ta lấy SCT là 8h00, trừ đi 1 phút (giả sử ít nhất cũng phải mất 1 phút để xe đi từ trạm trộn đến công trường, không thể là 0 phút), được 7h59 phút.
+        7h59 phút nằm trong khoảng 7h-7h59, do đó lấy 8 giá trị TDG tương ứng với các khoảng 0h00-0h59, 1h00-1h59,..., 7h00-7h59 để tính toán.
+
+        Coi các khoảng thời gian tương ứng có chỉ số i với i = 0 -> 7
+        Với mỗi TDGi,tính:
+        FDTi = SCT - TDGi
+
+        Với mỗi FDTi, kiểm tra xem FDTi có thỏa mãn điều kiện là giá trị nằm trong khoảng thời gian thứ i hay không. Nếu thỏa mãn, lấy FDTi bé nhất.
+        Ví dụ 1:
+        Trong khoảng i=6: (6h-6h59), xe cần di chuyển 30 phút mới đến công trường A => TDG(6) = 30, FDT(6) = SCT-TDG(6) = 8h - 30 phút bằng 7h30
+        => 7h30 không thỏa mãn nằm trong khoảng (6h-6h59) nên giá trị này không dùng được
+        Trong khoảng i=7: (7h-7h59), xe cần di chuyển 20 phút mới đến công trường A => TDG(7) = 20, FDT(7) = SCT-TDG(7) = 8h - 20 phút bằng 7h40
+        => 7h40 thỏa mãn nằm trong khoảng (7h-7h59) nên giá trị này thỏa mãn. Vậy lấy FDT bằng 7h40 phút.
+
+        Ví dụ 2:
+        Trong khoảng i=6: (6h-6h59), xe cần di chuyển 1h30 phút mới đến công trường A => TDG(6) = 1h30, FDT(6) = SCT-TDG(6) = 8h - 1h30 phút bằng 6h30
+        => 6h30 thỏa mãn nằm trong khoảng (6h-6h59) nên giá trị này thỏa mãn và có thể dùng làm FDT.
+        Trong khoảng i=7: (7h-7h59), xe cần di chuyển 20 phút mới đến công trường A => TDG(7) = 20, FDT(7) = SCT-TDG(7) = 8h - 20 phút bằng 7h40
+        => 7h40 thỏa mãn nằm trong khoảng (7h-7h59) nên giá trị này thỏa mãn và có thể dùng làm FDT.
+        Trong 2 giá trị FDT(6) bé hơn (6h30 so với 7h40) nên lấy FDT là FDT(6)=6h30.
+        */
+
+        int fdt = infinity;
+        for (RMCStation rmcStation: lstRMCStation){
+            int startTimeOfSite = lstSite.get(0).SCT;   //thời gian bắt đầu đổ bê tông của công trường đầu tiên
+            for (int i = 0; i <= (startTimeOfSite-1)/60; i++) {
+                int TDG = rmcStation.getTDGValueForTime(0, i * 60); //thời gian từ trạm trộn đến công trường đầu tiên
+                int FDTi = lstSite.get(0).calTimeTruckMove(TDG);
+                if (FDTi >= i*60 && FDTi < (i+1)*60){
+                    fdt = FDTi;
+                    break;
+                }
+            }
+
+            for(int j = 1; j < lstSite.size(); j++){
+                startTimeOfSite = lstSite.get(j).SCT; //thời gian bắt đầu đổ bê tông của công trường thứ j
+                for (int i = 0; i <= (startTimeOfSite-1)/60; i++) {
+                    int TDG = rmcStation.getTDGValueForTime(j, i * 60); //thời gian từ trạm trộn đến công trường thứ j
+                    int FDTi = lstSite.get(j).calTimeTruckMove(TDG);
+                    if (FDTi >= i*60 && FDTi < (i+1)*60){
+                        if(fdt > FDTi){
+                            fdt = FDTi;
+                        }
+                        break;
+                    }
                 }
             }
 
@@ -241,35 +293,6 @@ public class f_SimRMC {
             }
             arrSite.get(i).k = k;
         }
-
-        //for test
-//        arrSite = new ArrayList<>();
-//        arrSite.add(new RMCSite(2,0,1));
-//        arrSite.add(new RMCSite(3,0,1));
-//        arrSite.add(new RMCSite(2,0,2));
-//        arrSite.add(new RMCSite(1,0,1));
-//        arrSite.add(new RMCSite(3,0,2));
-//        arrSite.add(new RMCSite(1,0,2));
-//        arrSite.add(new RMCSite(3,0,3));
-//        arrSite.add(new RMCSite(3,0,4));
-//        arrSite.add(new RMCSite(1,0,3));
-//        arrSite.add(new RMCSite(2,0,3));
-//        arrSite.add(new RMCSite(3,0,5));
-//        arrSite.add(new RMCSite(2,0,4));
-        //1,3,2,1,2,1,3,2,3,3,3,2
-//        arrSite = new ArrayList<>();
-//        arrSite.add(new RMCSite(1,0,1));
-//        arrSite.add(new RMCSite(3,0,1));
-//        arrSite.add(new RMCSite(2,0,1));
-//        arrSite.add(new RMCSite(1,0,2));
-//        arrSite.add(new RMCSite(2,0,2));
-//        arrSite.add(new RMCSite(1,0,3));
-//        arrSite.add(new RMCSite(3,0,2));
-//        arrSite.add(new RMCSite(2,0,3));
-//        arrSite.add(new RMCSite(3,0,3));
-//        arrSite.add(new RMCSite(3,0,4));
-//        arrSite.add(new RMCSite(3,0,5));
-//        arrSite.add(new RMCSite(2,0,4));
 
         int No = 1;
         for(RMCSite rm : arrSite) {
@@ -433,8 +456,8 @@ public class f_SimRMC {
             }
 
             rmcTruckSchedule.CD_RMC = rmcTruckSchedule.delivery * rmcTruckSchedule.s.CD;
-
-            rmcTruckSchedule.TDG = rmcStationGo.lstTDG.get(rmcTruckSchedule.s.siteID-1);
+            int siteIndex = rmcTruckSchedule.s.siteID-1;
+            rmcTruckSchedule.TDG = rmcStationGo.getTDGValueForTime(siteIndex, rmcTruckSchedule.SDT);
 
             rmcTruckSchedule.TAC = rmcTruckSchedule.SDT + rmcTruckSchedule.TDG;
 
@@ -467,7 +490,8 @@ public class f_SimRMC {
             rmcTruckSchedule.StationID_Back = scheduleTruckBack.stationID;
             rmcStationBack = findRMCStation(scheduleTruckBack.stationID);
 
-            rmcTruckSchedule.TDB = rmcStationBack.lstTDB.get(rmcTruckSchedule.s.siteID-1);
+            siteIndex = rmcTruckSchedule.s.siteID-1;
+            rmcTruckSchedule.TDB = rmcStationBack.getTDBValueForTime(siteIndex, rmcTruckSchedule.LT);
             rmcTruckSchedule.TBB = rmcTruckSchedule.LT + rmcTruckSchedule.TDB;
 
             //quang duong di = quang duong tu rmcStationGo den cong truong + quang duong tu cong truong ve rmcStationBack
@@ -493,8 +517,9 @@ public class f_SimRMC {
 
         for(int i = 1; i < lstRMCStation.size(); i++){
             RMCStation rmcStation = lstRMCStation.get(i);
-            int TBBofGoodStation = rmcTruckSchedule.LT + goodStation.lstTDB.get(rmcTruckSchedule.s.siteID-1);
-            int TBBofCurrentStation = rmcTruckSchedule.LT + rmcStation.lstTDB.get(rmcTruckSchedule.s.siteID-1);
+            int siteIndex = rmcTruckSchedule.s.siteID-1;
+            int TBBofGoodStation = rmcTruckSchedule.LT + goodStation.getTDBValueForTime(siteIndex, rmcTruckSchedule.LT);
+            int TBBofCurrentStation = rmcTruckSchedule.LT + rmcStation.getTDBValueForTime(siteIndex, rmcTruckSchedule.LT);
 
             if (TBBofCurrentStation<TBBofGoodStation){
                 goodStation = rmcStation;
@@ -526,8 +551,9 @@ public class f_SimRMC {
 
             int SDTofGoodStation = goodStation.lstIDT.get(0).outputTime;
             int SDTofCurrentStation = rmcStation.lstIDT.get(0).outputTime;
-            int TACofGoodStation = SDTofGoodStation + goodStation.lstTDG.get(rmcTruckSchedule.s.siteID-1);
-            int TACofCurrentStation = SDTofCurrentStation + rmcStation.lstTDG.get(rmcTruckSchedule.s.siteID-1);
+            int siteIndex = rmcTruckSchedule.s.siteID-1;
+            int TACofGoodStation = SDTofGoodStation + goodStation.getTDGValueForTime(siteIndex, SDTofGoodStation);
+            int TACofCurrentStation = SDTofCurrentStation + rmcStation.getTDGValueForTime(siteIndex, SDTofCurrentStation);
             int PTF = 0;
             if (rmcTruckSchedule.k == 1){
                 PTF = rmcTruckSchedule.s.SCT;
